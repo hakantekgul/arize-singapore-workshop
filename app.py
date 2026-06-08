@@ -59,7 +59,6 @@ demo = gr.ChatInterface(
         "orders A1001, A1002, or A1003, shipping, returns, or sizing."
     ),
     examples=EXAMPLES,
-    theme=gr.themes.Soft(),
 )
 
 
