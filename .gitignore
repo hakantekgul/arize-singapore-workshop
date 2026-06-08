@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Eval artifacts
+runs.json
+exported_examples.json
+dataset_*/
+experiment_*/
+
+# OS
+.DS_Store

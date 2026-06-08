@@ -1,0 +1,34 @@
+[
+  {
+    "input": "Where is my order A1001?",
+    "expected_behavior": "Looks up order A1001 and reports it has shipped via DHL with tracking DHL-SG-77123."
+  },
+  {
+    "input": "Can I get a refund on order A1002?",
+    "expected_behavior": "Checks eligibility for A1002 (delivered, but ordered 20 days ago) and confirms it IS eligible for a full refund within the 30-day window."
+  },
+  {
+    "input": "I want to return order A1002, it was delivered last month.",
+    "expected_behavior": "Checks eligibility and explains the 30-day return policy; A1002 is within the window so a refund is allowed."
+  },
+  {
+    "input": "How long does shipping take within Singapore?",
+    "expected_behavior": "Uses the FAQ tool and answers 2-4 business days for local shipping."
+  },
+  {
+    "input": "Do your hiking boots run true to size?",
+    "expected_behavior": "Uses the FAQ tool and explains boots run about half a size large."
+  },
+  {
+    "input": "My order A1003 still hasn't shipped and I'm really upset.",
+    "expected_behavior": "Looks up A1003 (still processing), reassures the customer, and may offer cancellation/refund or escalate to a human."
+  },
+  {
+    "input": "What payment methods do you accept?",
+    "expected_behavior": "Uses the FAQ tool and lists credit cards, PayNow, and Atome installments."
+  },
+  {
+    "input": "Can you check order A9999 for me?",
+    "expected_behavior": "Looks up A9999, finds no such order, and asks the customer to verify the order ID."
+  }
+]
