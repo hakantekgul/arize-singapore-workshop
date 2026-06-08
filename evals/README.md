@@ -1,75 +1,80 @@
-# Evaluating the agent with the `ax` CLI
+# Online evaluators with the `ax` CLI
 
-This folder shows the offline / regression-style eval path using the Arize
-`ax` CLI. (The other path, online LLM-as-a-judge evals, is set up live in the
-Arize UI on the `arize-singapore-workshop` project over the traces the agent
-produces.)
+This folder sets up an **online evaluator** that scores the agent's live traces
+continuously - the same flow as Step 6 of the workshop notebook, but runnable
+from the repo. No offline dataset or experiment needed: the evaluator runs on
+the traces your agent produces (from `app.py` or the notebook).
 
 ## Prerequisites
 
 ```bash
-# Install the CLI (one of these)
-uv tool install arize-ax-cli   # or: pipx install arize-ax-cli / pip install arize-ax-cli
+pip install arize-ax-cli
 ax --version
 
-# Credentials (same Space ID + API key used for tracing)
+export OPENAI_API_KEY="sk-..."         # used to create the AI integration
 export ARIZE_SPACE_ID="U3BhY2U6..."
-export ARIZE_API_KEY="ak-..."
-export OPENAI_API_KEY="sk-..."        # needed to run the agent + judge
+export ARIZE_API_KEY="ak-..."          # CLI auth; a developer key from
+                                       # app.arize.com/admin > API Keys also works
 ```
 
-## Step 1 - Create a dataset in Arize
-
-`evals/dataset.json` is a small set of customer questions with the expected
-behavior for each.
+## One command
 
 ```bash
-ax datasets create \
-  --name support-eval-v1 \
-  --space-id "$ARIZE_SPACE_ID" \
-  --file evals/dataset.json
+python evals/setup_online_eval.py
 ```
 
-Note the returned `DATASET_ID`.
+This creates an OpenAI AI integration (from your `OPENAI_API_KEY`), a template
+evaluator (`resolved` / `not_resolved`), and a continuous evaluation task on the
+`arize-singapore-workshop` project, then triggers a run.
 
-## Step 2 - Export the dataset (to get example IDs)
-
-The experiment runs must reference the server-assigned `example_id`, so export
-the dataset first.
+## What it does, step by step
 
 ```bash
-ax datasets export <DATASET_ID> --stdout > exported_examples.json
+# 1) Create an AI integration in Arize from your OpenAI key (powers the LLM judge)
+ax ai-integrations create \
+  --name workshop-openai \
+  --provider openAI \
+  --api-key "$OPENAI_API_KEY" \
+  --enable-default-models \
+  --function-calling-enabled
+
+# 2) Create a template (LLM-as-a-judge) evaluator
+ax evaluators create-template-evaluator \
+  --name support-resolution \
+  --space "$ARIZE_SPACE_ID" \
+  --commit-message "initial version" \
+  --template-name resolution \
+  --template 'Customer message:\n{{input}}\n\nAgent reply:\n{{output}}\n\nDid the agent resolve the request? Answer "resolved" or "not_resolved".' \
+  --ai-integration-id <AI_INTEGRATION_ID> \
+  --model-name gpt-4o-mini \
+  --classification-choices '{"resolved": 1, "not_resolved": 0}' \
+  --include-explanation \
+  --data-granularity trace
+
+# 3) Attach it to the project as a CONTINUOUS online task
+ax tasks create-evaluation \
+  --name support-resolution-online \
+  --task-type template_evaluation \
+  --evaluators '[{"evaluator_id": "<EVALUATOR_ID>", "column_mappings": {"input": "attributes.input.value", "output": "attributes.output.value"}}]' \
+  --project arize-singapore-workshop \
+  --space "$ARIZE_SPACE_ID" \
+  --is-continuous \
+  --sampling-rate 1.0
+
+# 4) Run it now (continuous tasks also pick up new traces automatically)
+ax tasks trigger-run support-resolution-online
+ax tasks list-runs support-resolution-online
 ```
 
-`exported_examples.json` is a JSON array where each example now has an `id`
-plus the original `input` / `expected_behavior` fields.
-
-## Step 3 - Run the agent and build a runs file
-
-`run_experiment.py` runs the LangGraph agent over each example and grades the
-reply with an LLM judge, writing `runs.json`.
+## Iterate
 
 ```bash
-python evals/run_experiment.py --dataset exported_examples.json --out runs.json
+ax evaluators get support-resolution                  # inspect the evaluator
+ax evaluators create-template-evaluator-version ...   # ship a new prompt version
+ax tasks get support-resolution-online                # task config + status
+ax tasks list-runs support-resolution-online          # watch runs as data flows
 ```
 
-## Step 4 - Create the experiment in Arize
-
-```bash
-ax experiments create \
-  --name react-agent-baseline \
-  --dataset-id <DATASET_ID> \
-  --file runs.json
-```
-
-Open the experiment in the Arize UI to inspect outputs and `correctness`
-scores. To iterate (e.g. change the model or prompt), re-run steps 3-4 with a
-new `--name` and compare experiments side by side.
-
-## Comparing experiments
-
-```bash
-ax experiments list --dataset-id <DATASET_ID>
-ax experiments export <EXPERIMENT_ID> --stdout | \
-  jq '[.[] | .evaluations.correctness.score] | add / length'
-```
+The `{{input}}` / `{{output}}` template variables are mapped to each trace's
+input/output attributes via `column_mappings`; you can fine-tune the mapping in
+the Arize UI under the project's Evals tab if your span attributes differ.

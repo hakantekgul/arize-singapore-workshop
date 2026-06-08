@@ -12,9 +12,8 @@ chat with it through a Gradio UI, and run evaluations two ways.
 1. Build a tool-using agent with LangGraph + OpenAI.
 2. Trace the agent into Arize with one-line auto-instrumentation.
 3. Inspect traces (LLM calls, tool calls, inputs/outputs) in the Arize UI.
-4. Evaluate the agent two ways:
-   - **Online LLM-as-a-judge** evals, set up in the Arize UI over live traces.
-   - **Offline experiments** against a dataset, using the `ax` CLI.
+4. Set up a **continuous online evaluator** (LLM-as-a-judge) entirely from the
+   `ax` CLI, so live traces are scored automatically.
 
 ## The only input you need to start
 
@@ -58,9 +57,8 @@ arize-singapore-workshop/
 ├── notebook/
 │   └── arize_workshop.ipynb   # guided Colab notebook (same logic)
 ├── evals/
-│   ├── dataset.json    # sample eval questions
-│   ├── run_experiment.py
-│   └── README.md       # ax CLI dataset + experiment commands
+│   ├── setup_online_eval.py   # create AI integration + evaluator + continuous task
+│   └── README.md              # ax CLI online-evaluator commands
 ├── requirements.txt
 └── .env.example
 ```
@@ -84,12 +82,17 @@ LangChainInstrumentor().instrument(tracer_provider=tracer_provider)
 
 ## Evaluating the agent
 
-- **Online (UI):** in the Arize UI, add an LLM-as-a-judge evaluation (e.g.
-  "did the agent resolve the request?" or a hallucination check) on the
-  `arize-singapore-workshop` project. It runs over the traces you generate by
-  chatting with the agent.
-- **Offline (ax CLI):** create a dataset, run the agent over it, and upload an
-  experiment. Full commands are in [evals/README.md](evals/README.md).
+Set up a **continuous online evaluator** from the `ax` CLI: it creates an AI
+integration from your OpenAI key, a template (LLM-as-a-judge) evaluator, and a
+continuous evaluation task on the `arize-singapore-workshop` project that scores
+every new trace automatically.
+
+```bash
+python evals/setup_online_eval.py
+```
+
+Full command-by-command breakdown is in [evals/README.md](evals/README.md). (You
+can also configure the same evaluator from the Evals tab in the Arize UI.)
 
 ## Suggested workshop agenda (~45 min hands-on)
 
@@ -97,5 +100,5 @@ LangChainInstrumentor().instrument(tracer_provider=tracer_provider)
 2. Build & run the agent with no tracing (5 min).
 3. Add Arize tracing and re-run; explore traces in the UI (10 min).
 4. Launch the Gradio UI; everyone chats and generates traces (5 min).
-5. Set up an online LLM-judge eval in the UI (5 min).
-6. Run an offline experiment with the `ax` CLI (5 min).
+5. Create a continuous online evaluator from the `ax` CLI; watch it score live
+   traces in the Arize UI (10 min).
